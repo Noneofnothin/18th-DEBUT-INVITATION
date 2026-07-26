@@ -435,6 +435,73 @@
       margin-bottom: 20px;
     }
 
+    /* --- LOADING SPINNER OVERLAY --- */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 1, 13, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spinner-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #240433 0%, #12011c 100%);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 35px 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(255, 215, 0, 0.4);
+      text-align: center;
+    }
+
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 4px solid rgba(255, 215, 0, 0.2);
+      border-top: 4px solid #ffd700;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 18px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-title {
+      color: #ffd700;
+      font-family: 'Georgia', serif;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .loading-subtext {
+      color: #e3c4f7;
+      font-size: 13px;
+    }
+
     /* --- BOOK CONTAINER & REVEAL --- */
     .book-container {
       width: 90vw;
@@ -1287,6 +1354,15 @@
     </div>
   </div>
 
+  <!-- Loading Animation Overlay -->
+  <div class="loading-overlay hidden" id="loadingModal">
+    <div class="spinner-box">
+      <div class="spinner"></div>
+      <div class="loading-title">Sending your RSVP...</div>
+      <div class="loading-subtext">Writing your wish to the wall ✨</div>
+    </div>
+  </div>
+
   <!-- Styled Custom Wish Submission Confirmation Modal UI -->
   <div class="modal-overlay hidden" id="successModal">
     <div class="modal-box">
@@ -1332,7 +1408,6 @@
       </div>
       <div class="ticket-actions">
         <button class="btn" id="downloadTicketBtn">📥 Save Ticket Pass</button>
-        <!-- Replaced Close button with View Wish Wall button -->
         <button class="btn btn-wish-wall-ticket" id="closeTicketBtn">✨ View Wish Wall</button>
       </div>
     </div>
@@ -1582,6 +1657,7 @@
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const pageCounter = document.getElementById('pageCounter');
+    const loadingModal = document.getElementById('loadingModal');
 
     let currentPage = 0;
     const totalPages = pages.length;
@@ -1666,7 +1742,6 @@
       prevBtn.disabled = currentPage === 0;
       nextBtn.textContent = currentPage === totalPages - 1 ? 'Start Over ↺' : 'Next ❯';
 
-      // Expand container for RSVP and Wish Wall pages for broader readability
       if (currentPage >= totalPages - 2) {
         bookContainer.classList.add('expanded');
         if (currentPage === totalPages - 1 && typeof confetti === 'function') {
@@ -1841,7 +1916,6 @@
       ticketModal.classList.remove('hidden');
     }
 
-    // Clicking "View Wish Wall" on the ticket modal closes ticket & opens Wish Wall
     closeTicketBtn.addEventListener('click', () => {
       ticketModal.classList.add('hidden');
       currentPage = totalPages - 1;
@@ -1862,6 +1936,7 @@
       });
     });
 
+    // Handle RSVP Form Submission with Loading Animation
     rsvpForm.addEventListener('submit', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -1876,13 +1951,12 @@
 
       const originalText = submitBtn.textContent;
 
+      // 1. Trigger Loading Overlay Animation
+      loadingModal.classList.remove('hidden');
       submitBtn.disabled = true;
       submitBtn.textContent = '⌛ Submitting...';
 
-      formStatus.style.display = 'block';
-      formStatus.textContent = '⌛ Saving your RSVP...';
-      formStatus.style.color = '#ffd700';
-
+      // 2. Pre-render wish card into wall
       const wishCard = document.createElement('div');
       wishCard.className = 'wish-card';
       wishCard.innerHTML = `
@@ -1891,17 +1965,22 @@
       `;
       wishContainer.prepend(wishCard);
 
-      const restoreButton = () => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      };
+      const finishSubmission = () => {
+        setTimeout(() => {
+          // Hide Loading animation
+          loadingModal.classList.add('hidden');
 
-      const showSubmissionModalUI = () => {
-        successModal.classList.remove('hidden');
-        closeSuccessBtn.onclick = () => {
-          successModal.classList.add('hidden');
-          showTicketPass(name, attendance, count);
-        };
+          // Reset submit button
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+
+          // Show Success Modal
+          successModal.classList.remove('hidden');
+          closeSuccessBtn.onclick = () => {
+            successModal.classList.add('hidden');
+            showTicketPass(name, attendance, count);
+          };
+        }, 800); // Slight delay so the user experiences the sleek loading screen
       };
 
       if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https://script.google.com")) {
@@ -1914,22 +1993,14 @@
           body: JSON.stringify({ name, attendance, count, wish })
         })
         .then(() => {
-          formStatus.textContent = '✅ Thank you! RSVP & Wish sent successfully!';
-          formStatus.style.color = '#7dff85';
-          showSubmissionModalUI();
+          finishSubmission();
         })
         .catch((err) => {
           console.error(err);
-          formStatus.textContent = '✨ Wish added to Wish Wall!';
-          formStatus.style.color = '#ffd700';
-          showSubmissionModalUI();
-        })
-        .finally(() => {
-          restoreButton();
+          finishSubmission();
         });
       } else {
-        showSubmissionModalUI();
-        restoreButton();
+        finishSubmission();
       }
 
       document.getElementById('guestWish').value = '';
