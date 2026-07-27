@@ -432,7 +432,17 @@
       font-size: 15px;
       text-align: center;
       outline: none;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .modal-error-text {
+      color: #ff4d6d;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: -8px;
+      margin-bottom: 15px;
+      display: none;
     }
 
     /* --- LOADING SPINNER OVERLAY --- */
@@ -1350,6 +1360,7 @@
       <h2>Welcome!</h2>
       <p>Please enter your name to personalize your invitation:</p>
       <input type="text" id="usernameInput" class="modal-input" placeholder="Your Name Here" autocomplete="off">
+      <p id="nameError" class="modal-error-text">Please enter your name to proceed!</p>
       <button class="btn" id="submitNameBtn">Open Invitation ✉️</button>
     </div>
   </div>
@@ -1569,7 +1580,7 @@
         musicToggleBtn.textContent = '🔊';
       } else {
         bgMusic.pause();
-        musicToggleBtn.textContent = '0x1F507';
+        musicToggleBtn.textContent = '🔇';
       }
     }
 
@@ -1646,6 +1657,7 @@
     const waxSealBtn = document.getElementById('waxSealBtn');
     const nameModal = document.getElementById('nameModal');
     const usernameInput = document.getElementById('usernameInput');
+    const nameError = document.getElementById('nameError');
     const submitNameBtn = document.getElementById('submitNameBtn');
     const coverTitle = document.getElementById('coverTitle');
     const controls = document.getElementById('controls');
@@ -1673,14 +1685,27 @@
       playAudio();
     });
 
+    // Clean error state when the user starts typing
+    usernameInput.addEventListener('input', () => {
+      nameError.style.display = 'none';
+      usernameInput.style.borderColor = '#ffd700';
+      usernameInput.style.boxShadow = 'none';
+    });
+
     function setGuestName() {
       const name = usernameInput.value.trim();
-      if (name) {
-        coverTitle.innerHTML = `YOU'VE BEEN INVITED,<br><span class="guest-highlight">${name}!</span>`;
-        document.getElementById('guestName').value = name;
-      } else {
-        coverTitle.innerHTML = `YOU'VE BEEN<br>INVITED!`;
+
+      // BLOCK PROCEEDING IF NO NAME IS PROVIDED
+      if (!name) {
+        nameError.style.display = 'block';
+        usernameInput.style.borderColor = '#ff4d6d';
+        usernameInput.style.boxShadow = '0 0 10px rgba(255, 77, 109, 0.5)';
+        usernameInput.focus();
+        return; // Prevent modal from closing & stop continuation
       }
+
+      coverTitle.innerHTML = `YOU'VE BEEN INVITED,<br><span class="guest-highlight">${name}!</span>`;
+      document.getElementById('guestName').value = name;
       
       nameModal.classList.add('hidden');
       controls.classList.remove('visible');
